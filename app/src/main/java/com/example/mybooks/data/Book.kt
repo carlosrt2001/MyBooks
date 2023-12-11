@@ -14,6 +14,7 @@ data class Book(
     val name: String,
     val author: String,
     val description: String,
+    val genre: String,
     val isFavorite: Int = 0,
     val isRead: Int = 0
 )

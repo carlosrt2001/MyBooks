@@ -81,4 +81,11 @@ dependencies {
     implementation("androidx.camera:camera-core:1.1.0")
     implementation("androidx.camera:camera-camera2:1.1.0")
     implementation("androidx.camera:camera-lifecycle:1.1.0")
+
+    implementation("androidx.compose.material:material:1.3.1")
+
+    //Camera
+    implementation("androidx.camera:camera-core:1.2.1")
+    implementation("androidx.camera:camera-camera2:1.2.1")
+
 }

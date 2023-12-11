@@ -15,5 +15,6 @@ class OfflineUsersRepository(private val userDao: UserDao): UsersRepository {
 
     override suspend fun updateUser(item: User) = userDao.update(item)
 
-    override fun getActiveUserStream(): Flow<List<User>> = userDao.getActiveUser()
+    override fun getActiveUser(): User = userDao.getActiveUser()
+
 }

@@ -15,5 +15,5 @@ interface UsersRepository {
 
     suspend fun updateUser(user: User)
 
-    fun getActiveUserStream(): Flow<List<User>>
+    fun getActiveUser(): User
 }

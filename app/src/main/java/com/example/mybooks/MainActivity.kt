@@ -41,8 +41,8 @@ import androidx.compose.runtime.Composable
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
-
-
+import androidx.compose.ui.text.input.PasswordVisualTransformation
+import androidx.compose.foundation.clickable
 
 
 class MainActivity : ComponentActivity() {
@@ -76,7 +76,7 @@ class MainActivity : ComponentActivity() {
                             Registrarse(navController, appContainer.usersRepository, viewModel)
                         }
                         composable("perfil") {
-                            Perfil()
+                            Perfil(navController, viewModel)
                         }
                         composable("main") {
                             Principal(navController)
@@ -225,6 +225,7 @@ fun IniciarSesion(navController: NavHostController, usersRepository: UsersReposi
                 keyboardOptions = KeyboardOptions.Default.copy(
                     imeAction = ImeAction.Done
                 ),
+                visualTransformation = PasswordVisualTransformation(),
                 modifier = Modifier
                     .fillMaxWidth()
                     .height(56.dp)
@@ -239,6 +240,7 @@ fun IniciarSesion(navController: NavHostController, usersRepository: UsersReposi
                         val username = user.username
                         val password = user.password
                         if (usern == username && passw == password) {
+                            //viewModel.activateUser(user)
                             navController.navigate("main")
                         }
                     }
@@ -249,7 +251,7 @@ fun IniciarSesion(navController: NavHostController, usersRepository: UsersReposi
                 onClick = {
                     val scope = CoroutineScope(Dispatchers.Main)
                     if (username.isEmpty() || password.isEmpty()) {
-                        navController.navigate("login")
+                        //navController.navigate("login")
                     } else {
                         scope.launch {
                             loginUser(username, password)
@@ -328,6 +330,7 @@ fun Registrarse(navController: NavHostController, usersRepository: UsersReposito
                 keyboardOptions = KeyboardOptions.Default.copy(
                     imeAction = ImeAction.Next
                 ),
+                visualTransformation = PasswordVisualTransformation(),
                 modifier = Modifier
                     .fillMaxWidth()
                     .height(56.dp)
@@ -342,6 +345,7 @@ fun Registrarse(navController: NavHostController, usersRepository: UsersReposito
                 keyboardOptions = KeyboardOptions.Default.copy(
                     imeAction = ImeAction.Done
                 ),
+                visualTransformation = PasswordVisualTransformation(),
                 modifier = Modifier
                     .fillMaxWidth()
                     .height(56.dp)
@@ -358,9 +362,9 @@ fun Registrarse(navController: NavHostController, usersRepository: UsersReposito
                 totalUsers.collect {
                     if (cont < 1) {
                         cont = 1
-                        viewModel.insertUser(it+1, username, password)
+                        viewModel.insertUser(it+1, username, password, email)
                     } else {
-                        navController.navigate("main")
+                        navController.navigate("login")
                     }
                 }
             }
@@ -369,9 +373,9 @@ fun Registrarse(navController: NavHostController, usersRepository: UsersReposito
                 onClick = {
                     val scope = CoroutineScope(Dispatchers.Main)
                     if (email.isEmpty() || username.isEmpty() || password.isEmpty() || confirmPassword.isEmpty()) {
-                        navController.navigate("register")
+                        //navController.navigate("register")
                     } else if (password != confirmPassword) {
-                        navController.navigate("register")
+                        //navController.navigate("register")
                     } else {
                         scope.launch {
                             registerUser()
@@ -400,10 +404,20 @@ fun Registrarse(navController: NavHostController, usersRepository: UsersReposito
 
 
 @Composable
-fun Perfil() {
+fun Perfil(navController: NavHostController, viewModel: MainViewModel) {
+    var correo by remember { mutableStateOf("correo1@email.com") }
     var usuario by remember { mutableStateOf("prueba1") }
     var contraseña by remember { mutableStateOf("contraseña1") }
     val orange = Color(0xFFE77A1C)
+
+    /*
+    val activeUser = viewModel.getActiveUser()
+
+    activeUser?.let {
+        usuario = it.username
+        contraseña = it.password
+    }
+    */
 
     Column(
         modifier = Modifier
@@ -425,6 +439,17 @@ fun Perfil() {
 
         Spacer(modifier = Modifier.height(16.dp))
 
+        Text(text = "Correo electrónico:")
+        TextField(
+            value = correo,
+            onValueChange = { correo = it },
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(8.dp)
+        )
+
+        Spacer(modifier = Modifier.height(8.dp))
+
         Text(text = "Usuario:")
         TextField(
             value = usuario,
@@ -440,22 +465,35 @@ fun Perfil() {
         TextField(
             value = contraseña,
             onValueChange = { contraseña = it },
+            visualTransformation = PasswordVisualTransformation(),
             modifier = Modifier
                 .fillMaxWidth()
                 .padding(8.dp),
-
         )
 
-        Spacer(modifier = Modifier.height(16.dp))
+        Spacer(modifier = Modifier.height(8.dp))
 
         Button(
             onClick = {
+                navController.navigate("main")
             },
             modifier = Modifier
                 .fillMaxWidth()
                 .padding(16.dp)
         ) {
             Text(text = "Guardar", color = Color.White)
+        }
+
+        Button(
+            onClick = {
+                //viewModel.deactivateUser(activeUser)
+                navController.navigate("home")
+            },
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(16.dp)
+        ) {
+            Text(text = "Cerrar Sesión", color = Color.White)
         }
     }
 }
@@ -599,6 +637,10 @@ fun Biblioteca(viewModel: MainViewModel) {
                 modifier = Modifier
                     .size(200.dp)
             )
+            Spacer(modifier = Modifier.height(8.dp))
+            if (libros.isEmpty()) {
+                Text("No hay libros en la Biblioteca", color = Color.White)
+            } else {
 
             LazyColumn(
                 modifier = Modifier
@@ -621,6 +663,7 @@ fun Biblioteca(viewModel: MainViewModel) {
                     Spacer(modifier = Modifier.height(8.dp))
                 }
             }
+            }
         }
     }
 }
@@ -629,54 +672,62 @@ fun Biblioteca(viewModel: MainViewModel) {
 
 @Composable
 private fun BookItem(libro: Book, onClickDelete: () -> Unit, onAddToFavorites: () -> Unit, onAddToRead: () -> Unit) {
+    var expanded by remember { mutableStateOf(false) }
+
     Card(
         modifier = Modifier
             .fillMaxWidth()
+            .clickable { expanded = !expanded }
     ) {
         Column(
             modifier = Modifier
                 .fillMaxWidth()
                 .padding(8.dp)
         ) {
-            Text(text = "Título: ${libro.name}")
-            Text(text = "Autor: ${libro.author}")
-            Text(text = "Descripción: ${libro.description}")
+            Text(text = "${libro.name}")
 
-            Spacer(modifier = Modifier.height(8.dp))
+            if (expanded) {
+                Text(text = "Autor: ${libro.author}")
+                Text(text = "Género: ${libro.genre}")
+                Text(text = "Descripción: ${libro.description}")
 
-            Button(
-                onClick = onAddToFavorites,
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(56.dp)
-            ) {
-                Text("Añadir a Futuras Lecturas", color = Color.White)
-            }
+                Spacer(modifier = Modifier.height(8.dp))
 
-            Spacer(modifier = Modifier.height(8.dp))
+                Button(
+                    onClick = onAddToFavorites,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(56.dp)
+                ) {
+                    Text("Añadir a Futuras Lecturas", color = Color.White)
+                }
 
-            Button(
-                onClick = onAddToRead,
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(56.dp)
-            ) {
-                Text("Añadir a Leídos", color = Color.White)
-            }
+                Spacer(modifier = Modifier.height(8.dp))
 
-            Spacer(modifier = Modifier.height(8.dp))
+                Button(
+                    onClick = onAddToRead,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(56.dp)
+                ) {
+                    Text("Añadir a Leídos", color = Color.White)
+                }
 
-            Button(
-                onClick = onClickDelete,
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(56.dp)
-            ) {
-                Text("Eliminar de la Biblioteca", color = Color.White)
+                Spacer(modifier = Modifier.height(8.dp))
+
+                Button(
+                    onClick = onClickDelete,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(56.dp)
+                ) {
+                    Text("Eliminar de la Biblioteca", color = Color.White)
+                }
             }
         }
     }
 }
+
 
 @Composable
 fun FuturasLecturas(viewModel: MainViewModel) {
@@ -704,21 +755,26 @@ fun FuturasLecturas(viewModel: MainViewModel) {
                 modifier = Modifier
                     .size(200.dp)
             )
-        LazyColumn(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(16.dp)
-        ) {
-            items(libros) { libro ->
-                BookItemFavorite(
-                    libro = libro,
-                    onDeleteFromFavorites = {
-                        viewModel.deleteFromFavorites(libro)
+            Spacer(modifier = Modifier.height(8.dp))
+            if (libros.isEmpty()) {
+                Text("No hay libros en Futuras Lecturas", color = Color.White)
+            } else {
+                LazyColumn(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .padding(16.dp)
+                ) {
+                    items(libros) { libro ->
+                        BookItemFavorite(
+                            libro = libro,
+                            onDeleteFromFavorites = {
+                                viewModel.deleteFromFavorites(libro)
+                            }
+                        )
+                        Spacer(modifier = Modifier.height(8.dp))
+                        Spacer(modifier = Modifier.height(8.dp))
                     }
-                )
-                Spacer(modifier = Modifier.height(8.dp))
-                Spacer(modifier = Modifier.height(8.dp))
-            }
+                }
             }
         }
     }
@@ -727,28 +783,35 @@ fun FuturasLecturas(viewModel: MainViewModel) {
 
 @Composable
 private fun BookItemFavorite(libro: Book, onDeleteFromFavorites: () -> Unit) {
+    var expanded by remember { mutableStateOf(false) }
+
     Card(
         modifier = Modifier
             .fillMaxWidth()
+            .clickable { expanded = !expanded }
     ) {
         Column(
             modifier = Modifier
                 .fillMaxWidth()
                 .padding(8.dp)
         ) {
-            Text(text = "Título: ${libro.name}")
-            Text(text = "Autor: ${libro.author}")
-            Text(text = "Descripción: ${libro.description}")
+            Text(text = "${libro.name}")
 
-            Spacer(modifier = Modifier.height(8.dp))
+            if (expanded) {
+                Text(text = "Autor: ${libro.author}")
+                Text(text = "Género: ${libro.genre}")
+                Text(text = "Descripción: ${libro.description}")
 
-            Button(
-                onClick = onDeleteFromFavorites,
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(56.dp)
-            ) {
-                Text("Eliminar de Futuras Lecturas", color = Color.White)
+                Spacer(modifier = Modifier.height(8.dp))
+
+                Button(
+                    onClick = onDeleteFromFavorites,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(56.dp)
+                ) {
+                    Text("Eliminar de Futuras Lecturas", color = Color.White)
+                }
             }
         }
     }
@@ -782,22 +845,27 @@ fun Leidos(viewModel: MainViewModel) {
                 modifier = Modifier
                     .size(200.dp)
             )
-        LazyColumn(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(16.dp)
-        ) {
-            items(libros) { libro ->
-                BookItemRead(
-                    libro = libro,
-                    onDeleteFromRead = {
-                        viewModel.deleteFromRead(libro)
+            Spacer(modifier = Modifier.height(8.dp))
+            if (libros.isEmpty()) {
+                Text("No hay libros en Leídos", color = Color.White)
+            } else {
+                LazyColumn(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .padding(16.dp)
+                ) {
+                    items(libros) { libro ->
+                        BookItemRead(
+                            libro = libro,
+                            onDeleteFromRead = {
+                                viewModel.deleteFromRead(libro)
+                            }
+                        )
+                        Spacer(modifier = Modifier.height(8.dp))
+                        Spacer(modifier = Modifier.height(8.dp))
                     }
-                )
-                Spacer(modifier = Modifier.height(8.dp))
-                Spacer(modifier = Modifier.height(8.dp))
+                }
             }
-        }
         }
     }
 }
@@ -805,28 +873,35 @@ fun Leidos(viewModel: MainViewModel) {
 
 @Composable
 private fun BookItemRead(libro: Book, onDeleteFromRead: () -> Unit) {
+    var expanded by remember { mutableStateOf(false) }
+
     Card(
         modifier = Modifier
             .fillMaxWidth()
+            .clickable { expanded = !expanded }
     ) {
         Column(
             modifier = Modifier
                 .fillMaxWidth()
                 .padding(8.dp)
         ) {
-            Text(text = "Título: ${libro.name}")
-            Text(text = "Autor: ${libro.author}")
-            Text(text = "Descripción: ${libro.description}")
+            Text(text = "${libro.name}")
 
-            Spacer(modifier = Modifier.height(8.dp))
+            if (expanded) {
+                Text(text = "Autor: ${libro.author}")
+                Text(text = "Género: ${libro.genre}")
+                Text(text = "Descripción: ${libro.description}")
 
-            Button(
-                onClick = onDeleteFromRead,
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(56.dp)
-            ) {
-                Text("Eliminar de Leídos", color = Color.White)
+                Spacer(modifier = Modifier.height(8.dp))
+
+                Button(
+                    onClick = onDeleteFromRead,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(56.dp)
+                ) {
+                    Text("Eliminar de Leídos", color = Color.White)
+                }
             }
         }
     }
@@ -837,6 +912,7 @@ private fun BookItemRead(libro: Book, onDeleteFromRead: () -> Unit) {
 fun añadirLibro(navController: NavHostController, booksRepository: BooksRepository, viewModel: MainViewModel) {
     var titulo by remember { mutableStateOf("") }
     var autor by remember { mutableStateOf("") }
+    var genero by remember { mutableStateOf("") }
     var descripcion by remember { mutableStateOf("") }
     val orange = Color(0xFFE77A1C)
 
@@ -861,75 +937,103 @@ fun añadirLibro(navController: NavHostController, booksRepository: BooksReposit
                 modifier = Modifier
                     .size(200.dp)
             )
-
-            Spacer(modifier = Modifier.height(16.dp))
-
-            Text(
-                text = "Título:",
+            LazyColumn(
                 modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(8.dp),
-            )
-            TextField(
-                value = titulo,
-                onValueChange = { titulo = it },
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(56.dp)
-            )
-
-            Spacer(modifier = Modifier.height(16.dp))
-
-            Text(
-                text = "Autor:",
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(8.dp),
-            )
-            TextField(
-                value = autor,
-                onValueChange = { autor = it },
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(56.dp)
-            )
-
-            Spacer(modifier = Modifier.height(16.dp))
-
-            Text(
-                text = "Descripción:",
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(8.dp),
-            )
-            TextField(
-                value = descripcion,
-                onValueChange = { descripcion = it },
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(120.dp)
-            )
-
-            Spacer(modifier = Modifier.height(16.dp))
-
-            Button(
-                onClick = {
-                    if (titulo.isNotEmpty() && autor.isNotEmpty()) {
-                        val nuevoLibro = Book(
-                            username = "nombre_usuario",
-                            name = titulo,
-                            author = autor,
-                            description = descripcion
-                        )
-                        viewModel.insertBook(nuevoLibro)
-                        navController.navigate("main")
-                    }
-                },
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(56.dp)
+                    .fillMaxSize()
+                    .background(color = orange)
+                    .padding(16.dp),
+                verticalArrangement = Arrangement.Center,
+                horizontalAlignment = Alignment.CenterHorizontally,
             ) {
-                Text("Añadir a la Biblioteca", color = Color.White)
+                item {
+
+                    Spacer(modifier = Modifier.height(16.dp))
+
+                    Text(
+                        text = "Título:",
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(8.dp),
+                    )
+                    TextField(
+                        value = titulo,
+                        onValueChange = { titulo = it },
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(56.dp)
+                    )
+
+                    Spacer(modifier = Modifier.height(16.dp))
+
+                    Text(
+                        text = "Autor:",
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(8.dp),
+                    )
+                    TextField(
+                        value = autor,
+                        onValueChange = { autor = it },
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(56.dp)
+                    )
+
+                    Spacer(modifier = Modifier.height(16.dp))
+
+                    Text(
+                        text = "Género:",
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(8.dp),
+                    )
+                    TextField(
+                        value = genero,
+                        onValueChange = { genero = it },
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(56.dp)
+                    )
+
+                    Spacer(modifier = Modifier.height(16.dp))
+
+                    Text(
+                        text = "Descripción:",
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(8.dp),
+                    )
+                    TextField(
+                        value = descripcion,
+                        onValueChange = { descripcion = it },
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(120.dp)
+                    )
+
+                    Spacer(modifier = Modifier.height(16.dp))
+
+                    Button(
+                        onClick = {
+                            if (titulo.isNotEmpty()) {
+                                val nuevoLibro = Book(
+                                    username = "nombre_usuario",
+                                    name = titulo,
+                                    author = autor,
+                                    description = descripcion,
+                                    genre = genero
+                                )
+                                viewModel.insertBook(nuevoLibro)
+                                navController.navigate("main")
+                            }
+                        },
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(56.dp)
+                    ) {
+                        Text("Añadir a la Biblioteca", color = Color.White)
+                    }
+                }
             }
         }
     }
@@ -938,29 +1042,43 @@ fun añadirLibro(navController: NavHostController, booksRepository: BooksReposit
 @Composable
 fun Ayuda(){
     val orange = Color(0xFFE77A1C)
-
-    Column(
+    Box(
         modifier = Modifier
             .fillMaxSize()
             .background(color = orange)
-            .padding(16.dp),
-                verticalArrangement = Arrangement.Center,
-        horizontalAlignment = Alignment.CenterHorizontally,
+            .padding(16.dp)
     ) {
-        Image(
-            painter = painterResource(R.drawable.question),
-            contentDescription = null,
-            contentScale = ContentScale.Crop,
-            alpha = 0.8F,
+        Column(
             modifier = Modifier
-                .size(200.dp)
-        )
+                .fillMaxSize()
+                .padding(8.dp),
+            verticalArrangement = Arrangement.Center,
+            horizontalAlignment = Alignment.CenterHorizontally
+        ) {
+            Image(
+                painter = painterResource(R.drawable.question),
+                contentDescription = null,
+                contentScale = ContentScale.Crop,
+                alpha = 0.8F,
+                modifier = Modifier
+                    .size(200.dp)
+            )
 
-        Spacer(modifier = Modifier.height(16.dp))
+            LazyColumn(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .background(color = orange)
+                    .padding(16.dp),
+                verticalArrangement = Arrangement.Center,
+                horizontalAlignment = Alignment.CenterHorizontally,
+            ) {
+                item {
+                    Spacer(modifier = Modifier.height(16.dp))
 
-
-        Text(
-            """
+                    Text(
+                        """
+                USO:
+                
                 Biblioteca:
                 Visualiza toda la colección de libros que has añadido. Aquí podrás añadir un libro a la sección de 'Futuras Lecturas' o 'Leídos' .
 
@@ -968,13 +1086,25 @@ fun Ayuda(){
                 Añade aquí desde la 'Biblioteca' todos los libros que te interesen y desees leer en un futuro.
 
                 Leídos:
-                Añade aquí desde la 'Biblioteca' todos los libros que ya hayas leído.
+                Guarda aquí desde la 'Biblioteca' todos los libros que ya hayas leído y quieras recordar.
 
                 Añadir Libro:
-                Añade los libros que te interesen a tu 'Biblioteca'. Los campos obligatorios serán el título y el autor. Eso sí, añade una descripción con todos los detalles importantes del libro.
+                Añade los libros que te interesen a tu 'Biblioteca'. El único campo obligatorio será el título. Eso sí, también puedes añadir el autor, el género y una descripción con los detalles que consideres importantes del libro.
 
                 Perfil:
-                Actualiza tu nombre de usuario y/o contraseña para cada vez que inicies sesión
-            """.trimIndent(), color = Color.White)
+                Actualiza tu correo electrónico, nombre de usuario o contraseña para cada vez que inicies sesión. Además podrás la cerrar sesión de usuario actualmente abierta.
+                
+                
+                
+                CONTACTO:
+                
+                Email:
+                carlos.rodriguez153@alu.ulpgc.es
+                antonio.medina115@alu.ulpgc.es
+            """.trimIndent(), color = Color.White
+                    )
+                }
+            }
+        }
     }
 }

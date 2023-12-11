@@ -12,9 +12,9 @@ import kotlinx.coroutines.launch
 
 class MainViewModel(private val usersRepository: UsersRepository, private val booksRepository: BooksRepository) : ViewModel() {
 
-    fun insertUser(id: Int, username: String, password: String) {
+    fun insertUser(id: Int, username: String, password: String, email: String) {
         viewModelScope.launch {
-            usersRepository.insertUser(User(id, username, password))
+            usersRepository.insertUser(User(id, username, password, email))
         }
     }
 
@@ -33,6 +33,24 @@ class MainViewModel(private val usersRepository: UsersRepository, private val bo
     fun getUser(username: String) {
         viewModelScope.launch {
             usersRepository.getUserStream(username)
+        }
+    }
+
+    fun getActiveUser(): User{
+        return usersRepository.getActiveUser()
+    }
+
+    fun activateUser(user: User) {
+        viewModelScope.launch {
+            val updatedUser = user.copy(isActive = 1)
+            usersRepository.updateUser(updatedUser)
+        }
+    }
+
+    fun deactivateUser(user: User) {
+        viewModelScope.launch {
+            val updatedUser = user.copy(isActive = 0)
+            usersRepository.updateUser(updatedUser)
         }
     }
 

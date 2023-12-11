@@ -28,6 +28,6 @@ interface UserDao {
     @Delete
     suspend fun delete(user: User)
 
-    @Query("SELECT * FROM user_table WHERE isActive == 1")
-    fun getActiveUser(): Flow<List<User>>
+    @Query("SELECT * FROM user_table WHERE isActive == 1 LIMIT 1")
+    fun getActiveUser(): User
 }
